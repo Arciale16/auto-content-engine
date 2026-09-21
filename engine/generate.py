@@ -44,10 +44,30 @@ Return only JSON:
 }}
 """
 
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=prompt
-    )
+    models_to_try = [
+    "gemini-3.6-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash"
+]
+
+last_error = None
+
+for model in models_to_try:
+    try:
+        print("Trying model:", model)
+
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt
+        )
+
+        return json.loads(response.text)
+
+    except Exception as e:
+        print("Failed:", model)
+        last_error = e
+
+raise last_error
 
     return json.loads(response.text)
 
