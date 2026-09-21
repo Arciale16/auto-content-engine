@@ -2,8 +2,13 @@ import json
 import sys
 from pathlib import Path
 
-from engine.providers import gemini
-from engine.providers import fallback
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent))
+
+from providers import gemini
+from providers import fallback
 
 
 def load_config(project):
