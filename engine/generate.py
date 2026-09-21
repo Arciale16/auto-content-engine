@@ -32,7 +32,23 @@ def ask_gemini(config):
     if not available:
         raise RuntimeError("No Gemini models available")
 
+    mpreferred = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash"
+]
+
+model_name = None
+
+for p in preferred:
+    if p in available:
+        model_name = p
+        break
+
+if model_name is None:
     model_name = available[0]
+
+print("Using model:", model_name)
 
     print("Using model:", model_name)
 
