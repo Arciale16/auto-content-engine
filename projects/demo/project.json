@@ -1,0 +1,36 @@
+{
+  "project_name": "Demo Project",
+  "enabled": true,
+
+  "language": "en",
+  "timezone": "Europe/Rome",
+
+  "content_source": {
+    "type": "static",
+    "topic": "Artificial Intelligence",
+    "description": "Short educational and interesting content about artificial intelligence."
+  },
+
+  "video": {
+    "format": "vertical",
+    "width": 1080,
+    "height": 1920,
+    "duration_seconds": 15,
+    "voiceover": true,
+    "subtitles": true
+  },
+
+  "content": {
+    "tone": "engaging",
+    "generate_hook": true,
+    "generate_caption": true,
+    "generate_hashtags": true
+  },
+
+  "publishing": {
+    "enabled": false,
+    "videos_per_day": 1,
+    "times": ["18:00"],
+    "platforms": []
+  }
+}
