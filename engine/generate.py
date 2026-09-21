@@ -33,43 +33,44 @@ Language:
 Duration:
 {config['video']['duration_seconds']} seconds
 
-Return only JSON:
+Return ONLY valid JSON:
 
 {{
-"hook":"",
-"body":"",
-"cta":"",
-"caption":"",
-"hashtags":[]
+"hook": "",
+"body": "",
+"cta": "",
+"caption": "",
+"hashtags": []
 }}
 """
 
-    models_to_try = [
-    "gemini-3.6-flash",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash"
-]
+    models = [
+        "gemini-3.6-flash",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash"
+    ]
 
-last_error = None
+    last_error = None
 
-for model in models_to_try:
-    try:
-        print("Trying model:", model)
+    for model in models:
+        try:
+            print("Trying:", model)
 
-        response = client.models.generate_content(
-            model=model,
-            contents=prompt
-        )
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt
+            )
 
-        return json.loads(response.text)
+            print("Success with:", model)
 
-    except Exception as e:
-        print("Failed:", model)
-        last_error = e
+            return json.loads(response.text)
 
-raise last_error
+        except Exception as error:
+            print("Failed:", model)
+            print(error)
+            last_error = error
 
-    return json.loads(response.text)
+    raise last_error
 
 
 def main():
@@ -82,12 +83,21 @@ def main():
     output = Path("output") / project
     output.mkdir(parents=True, exist_ok=True)
 
-    (output / "content.json").write_text(
-        json.dumps(result, indent=2, ensure_ascii=False),
+    file = output / "content.json"
+
+    file.write_text(
+        json.dumps(
+            result,
+            indent=2,
+            ensure_ascii=False
+        ),
         encoding="utf-8"
     )
 
-    print("SUCCESS")
+    print("")
+    print("====================")
+    print("CONTENT GENERATED")
+    print("====================")
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
