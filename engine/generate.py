@@ -7,15 +7,19 @@ from google import genai
 
 
 def load_config(project):
-    path = Path("projects") / project / "project.json"
+    config_file = Path("projects") / project / "project.json"
 
-    if not path.exists():
-        raise FileNotFoundError(f"Project not found: {project}")
+    if not config_file.exists():
+        raise FileNotFoundError(
+            f"Missing project file: {config_file}"
+        )
 
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(
+        config_file.read_text(encoding="utf-8")
+    )
 
 
-def find_available_models(client):
+def get_models(client):
     print("Checking available Gemini models...")
 
     models = client.models.list()
@@ -25,63 +29,50 @@ def find_available_models(client):
     for model in models:
         name = model.name.replace("models/", "")
 
-        methods = getattr(
-            model,
-            "supported_actions",
-            []
-        )
-
-        # fallback: accettiamo i modelli Gemini generativi
         if "gemini" in name.lower():
             available.append(name)
 
-    if not available:
-        raise RuntimeError(
-            "No Gemini models available for this API key"
-        )
-
+    print("")
     print("Available models:")
-    for m in available:
-        print("-", m)
+
+    for model in available:
+        print("-", model)
 
     return available
 
 
-def choose_model(models):
+def select_model(models):
 
-    preferred_words = [
-        "flash",
-        "pro"
+    # Ordine di preferenza
+    preferred = [
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-3-flash",
+        "gemini-flash-latest"
     ]
 
-    # preferiamo modelli veloci/economici
-    for word in preferred_words:
-        for model in models:
-            if word in model.lower():
-                return model
+    for item in preferred:
+        if item in models:
+            return item
 
-    return models[0]
+    # fallback: qualsiasi flash recente
+    for model in models:
+        if "flash" in model.lower():
+            return model
 
-
-def generate_content(config):
-
-    client = genai.Client(
-        api_key=os.environ["GEMINI_API_KEY"]
+    raise RuntimeError(
+        "No compatible Gemini Flash model found"
     )
 
-    models = find_available_models(client)
 
-    model = choose_model(models)
+def create_prompt(config):
 
-    print("")
-    print("Selected model:")
-    print(model)
-    print("")
+    return f"""
+You are an automatic content creation engine.
 
-    prompt = f"""
-You are the AI content engine.
-
-Create a short vertical video concept.
+Create one short vertical video idea.
 
 Project:
 {config['project_name']}
@@ -98,26 +89,45 @@ Language:
 Duration:
 {config['video']['duration_seconds']} seconds
 
-Return ONLY valid JSON:
+Return ONLY valid JSON.
+
+Format:
 
 {{
-"hook":"",
-"body":"",
-"cta":"",
-"caption":"",
-"hashtags":[]
+"hook": "",
+"body": "",
+"cta": "",
+"caption": "",
+"hashtags": []
 }}
 """
 
 
+def generate_with_gemini(config):
+
+    client = genai.Client(
+        api_key=os.environ["GEMINI_API_KEY"]
+    )
+
+    available_models = get_models(client)
+
+    model = select_model(available_models)
+
+    print("")
+    print("Selected model:")
+    print(model)
+    print("")
+
+    prompt = create_prompt(config)
+
     last_error = None
 
-    for attempt in range(3):
+    for attempt in range(1, 4):
 
         try:
 
             print(
-                f"Generation attempt {attempt + 1}/3"
+                f"Generation attempt {attempt}/3"
             )
 
             response = client.models.generate_content(
@@ -125,20 +135,56 @@ Return ONLY valid JSON:
                 contents=prompt
             )
 
-            return json.loads(response.text)
+            text = response.text.strip()
+
+            return json.loads(text)
 
 
         except Exception as error:
 
-            print("Generation failed:")
+            print("")
+            print("Generation error:")
             print(error)
+            print("")
 
             last_error = error
 
-            time.sleep(20)
+            if attempt < 3:
+                print(
+                    "Waiting 20 seconds before retry..."
+                )
+
+                time.sleep(20)
 
 
     raise last_error
+
+
+def save_output(project, content):
+
+    output_folder = Path("output") / project
+
+    output_folder.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    output_file = output_folder / "content.json"
+
+    output_file.write_text(
+        json.dumps(
+            content,
+            indent=2,
+            ensure_ascii=False
+        ),
+        encoding="utf-8"
+    )
+
+    print("")
+    print("======================")
+    print("CONTENT GENERATED")
+    print("======================")
+    print(output_file)
 
 
 def main():
@@ -149,42 +195,28 @@ def main():
         else "demo"
     )
 
-    config = load_config(project)
-
-    result = generate_content(config)
-
-
-    output = Path("output") / project
-
-    output.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-
-    file = output / "content.json"
-
-    file.write_text(
-        json.dumps(
-            result,
-            indent=2,
-            ensure_ascii=False
-        ),
-        encoding="utf-8"
-    )
-
-
     print("")
     print("======================")
-    print("CONTENT GENERATED")
+    print("AUTO CONTENT ENGINE")
     print("======================")
-    print(
-        json.dumps(
-            result,
-            indent=2,
-            ensure_ascii=False
-        )
+    print("Project:", project)
+    print("")
+
+    config = load_config(project)
+
+    content = generate_with_gemini(config)
+
+    save_output(
+        project,
+        content
     )
+
+    print("")
+    print(json.dumps(
+        content,
+        indent=2,
+        ensure_ascii=False
+    ))
 
 
 if __name__ == "__main__":
