@@ -1,21 +1,86 @@
 import os
 import json
 import sys
+import time
 from pathlib import Path
 from google import genai
 
 
 def load_config(project):
     path = Path("projects") / project / "project.json"
+
+    if not path.exists():
+        raise FileNotFoundError(f"Project not found: {project}")
+
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def find_available_models(client):
+    print("Checking available Gemini models...")
+
+    models = client.models.list()
+
+    available = []
+
+    for model in models:
+        name = model.name.replace("models/", "")
+
+        methods = getattr(
+            model,
+            "supported_actions",
+            []
+        )
+
+        # fallback: accettiamo i modelli Gemini generativi
+        if "gemini" in name.lower():
+            available.append(name)
+
+    if not available:
+        raise RuntimeError(
+            "No Gemini models available for this API key"
+        )
+
+    print("Available models:")
+    for m in available:
+        print("-", m)
+
+    return available
+
+
+def choose_model(models):
+
+    preferred_words = [
+        "flash",
+        "pro"
+    ]
+
+    # preferiamo modelli veloci/economici
+    for word in preferred_words:
+        for model in models:
+            if word in model.lower():
+                return model
+
+    return models[0]
+
+
 def generate_content(config):
+
     client = genai.Client(
         api_key=os.environ["GEMINI_API_KEY"]
     )
 
+    models = find_available_models(client)
+
+    model = choose_model(models)
+
+    print("")
+    print("Selected model:")
+    print(model)
+    print("")
+
     prompt = f"""
+You are the AI content engine.
+
 Create a short vertical video concept.
 
 Project:
@@ -36,67 +101,66 @@ Duration:
 Return ONLY valid JSON:
 
 {{
-"hook": "",
-"body": "",
-"cta": "",
-"caption": "",
-"hashtags": []
+"hook":"",
+"body":"",
+"cta":"",
+"caption":"",
+"hashtags":[]
 }}
 """
 
-    models = [
-    "gemini-3.6-flash"
-    ]
 
     last_error = None
 
-    for model in models:
+    for attempt in range(3):
+
         try:
-            print("Trying:", model)
 
-            import time
+            print(
+                f"Generation attempt {attempt + 1}/3"
+            )
 
-response = None
-
-for attempt in range(3):
-    try:
-        response = client.models.generate_content(
-            model=model,
-            contents=prompt
-        )
-        break
-
-    except Exception as error:
-        print("Attempt failed:", attempt + 1)
-        print(error)
-
-        if attempt < 2:
-            time.sleep(20)
-
-if response is None:
-    raise RuntimeError("Gemini unavailable after retries")
-
-            print("Success with:", model)
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt
+            )
 
             return json.loads(response.text)
 
+
         except Exception as error:
-            print("Failed:", model)
+
+            print("Generation failed:")
             print(error)
+
             last_error = error
+
+            time.sleep(20)
+
 
     raise last_error
 
 
 def main():
-    project = sys.argv[1] if len(sys.argv) > 1 else "demo"
+
+    project = (
+        sys.argv[1]
+        if len(sys.argv) > 1
+        else "demo"
+    )
 
     config = load_config(project)
 
     result = generate_content(config)
 
+
     output = Path("output") / project
-    output.mkdir(parents=True, exist_ok=True)
+
+    output.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
 
     file = output / "content.json"
 
@@ -109,11 +173,18 @@ def main():
         encoding="utf-8"
     )
 
+
     print("")
-    print("====================")
+    print("======================")
     print("CONTENT GENERATED")
-    print("====================")
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    print("======================")
+    print(
+        json.dumps(
+            result,
+            indent=2,
+            ensure_ascii=False
+        )
+    )
 
 
 if __name__ == "__main__":
