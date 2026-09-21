@@ -1,0 +1,39 @@
+name: Auto Content Engine
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Project to generate
+        required: true
+        default: demo
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Generate AI content
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python engine/generate.py "${{ inputs.project }}"
+
+      - name: Render video
+        run: python engine/render.py "${{ inputs.project }}"
+
+      - name: Upload generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-video-${{ inputs.project }}
+          path: output/${{ inputs.project }}/
