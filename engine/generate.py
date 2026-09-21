@@ -30,7 +30,28 @@ Return ONLY valid JSON:
 }}
 """
 
-    model = "gemini-1.5-flash"
+    req = urllib.request.Request(
+    f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
+)
+
+with urllib.request.urlopen(req) as r:
+    models = json.loads(r.read())
+
+available = []
+
+for m in models.get("models", []):
+    name = m.get("name", "").replace("models/", "")
+    methods = m.get("supportedGenerationMethods", [])
+
+    if "generateContent" in methods:
+        available.append(name)
+
+if not available:
+    raise RuntimeError("No Gemini models available for this API key.")
+
+model = available[0]
+
+print("Using Gemini model:", model)
 
     payload = json.dumps({
         "contents": [{
