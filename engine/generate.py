@@ -30,7 +30,7 @@ Return ONLY valid JSON:
 }}
 """
 
-    model = "gemini-2.0-flash"
+    model = "gemini-1.5-flash"
 
     payload = json.dumps({
         "contents": [{
