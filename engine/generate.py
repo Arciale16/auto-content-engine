@@ -45,9 +45,7 @@ Return ONLY valid JSON:
 """
 
     models = [
-        "gemini-3.6-flash",
-        "gemini-2.5-flash",
-        "gemini-2.0-flash"
+    "gemini-3.6-flash"
     ]
 
     last_error = None
@@ -56,10 +54,27 @@ Return ONLY valid JSON:
         try:
             print("Trying:", model)
 
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt
-            )
+            import time
+
+response = None
+
+for attempt in range(3):
+    try:
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt
+        )
+        break
+
+    except Exception as error:
+        print("Attempt failed:", attempt + 1)
+        print(error)
+
+        if attempt < 2:
+            time.sleep(20)
+
+if response is None:
+    raise RuntimeError("Gemini unavailable after retries")
 
             print("Success with:", model)
 
