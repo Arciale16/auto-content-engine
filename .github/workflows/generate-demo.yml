@@ -10,33 +10,54 @@ on:
 
 jobs:
   generate:
+
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
+
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          
+
+
       - name: Install dependencies
-        run: pip install google-genai
+        run: |
+          pip install google-genai
+          pip install pillow
+
 
       - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+
+      - name: Process images
+        run: |
+          python engine/image_processor.py
+
 
       - name: Generate AI content
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python engine/generate.py "${{ inputs.project }}"
+        run: |
+          python engine/generate.py "${{ inputs.project }}"
+
 
       - name: Render video
-        run: python engine/render.py "${{ inputs.project }}"
+        run: |
+          python engine/render.py "${{ inputs.project }}"
+
 
       - name: Upload generated files
         uses: actions/upload-artifact@v4
         with:
           name: generated-video-${{ inputs.project }}
-          path: output/${{ inputs.project }}/
+          path: |
+            output/${{ inputs.project }}/
+            assets/processed/

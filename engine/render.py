@@ -7,48 +7,28 @@ from pathlib import Path
 project = sys.argv[1] if len(sys.argv) > 1 else "demo"
 
 
-# Legge contenuto generato dall'AI
 content_file = Path("output") / project / "content.json"
 
 if not content_file.exists():
-    raise FileNotFoundError(
-        "Content file not found"
-    )
+    raise FileNotFoundError("Missing content.json")
 
 
 content = json.loads(
-    content_file.read_text(
-        encoding="utf-8"
-    )
+    content_file.read_text(encoding="utf-8")
 )
 
 
-# Cerca automaticamente una immagine
-background_folder = Path("assets/backgrounds")
+background = Path(
+    "assets/processed/processed.png"
+)
 
-images = []
-
-for ext in ["*.jpg", "*.jpeg", "*.png", "*.webp"]:
-    images.extend(
-        background_folder.glob(ext)
-    )
-
-
-if not images:
+if not background.exists():
     raise FileNotFoundError(
-        "No image found in assets/backgrounds"
+        "Missing processed image"
     )
 
 
-background = images[0]
-
-print("Using background:")
-print(background)
-
-
-# Output
 output = Path("output") / project
-
 output.mkdir(
     parents=True,
     exist_ok=True
@@ -58,7 +38,6 @@ output.mkdir(
 video = output / "video.mp4"
 
 
-# Testi
 hook = content.get(
     "hook",
     "AI is changing everything"
@@ -96,7 +75,11 @@ cta_file.write_text(
 )
 
 
-# FFmpeg
+# Font Windows
+font = "C\\:/Windows/Fonts/arial.ttf"
+font_bold = "C\\:/Windows/Fonts/arialbd.ttf"
+
+
 command = [
 
     "ffmpeg",
@@ -115,45 +98,58 @@ command = [
         "[0:v]"
         "scale=1080:1920,"
         "zoompan="
-        "z='min(zoom+0.0015,1.15)':"
+        "z='min(zoom+0.001,1.12)':"
         "d=250:"
         "s=1080x1920,"
-        
-        # Hook
+
+        "drawbox="
+        "x=0:y=0:"
+        "w=1080:h=1920:"
+        "color=black@0.35:"
+        "t=fill,"
+
         "drawtext="
-        "fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+        f"fontfile='{font_bold}':"
         f"textfile='{hook_file}':"
         "fontcolor=white:"
-        "fontsize=80:"
+        "fontsize=75:"
         "x=(w-text_w)/2:"
-        "y=450:"
+        "y=400:"
+        "box=1:"
+        "boxcolor=black@0.4:"
+        "boxborderw=20:"
         "enable='between(t,0,3)',"
 
-        # Body
+
         "drawtext="
-        "fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:"
+        f"fontfile='{font}':"
         f"textfile='{body_file}':"
         "fontcolor=white:"
         "fontsize=45:"
         "x=(w-text_w)/2:"
         "y=850:"
+        "box=1:"
+        "boxcolor=black@0.35:"
+        "boxborderw=15:"
         "enable='between(t,3,8)',"
 
-        # CTA
+
         "drawtext="
-        "fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+        f"fontfile='{font_bold}':"
         f"textfile='{cta_file}':"
         "fontcolor=yellow:"
         "fontsize=65:"
         "x=(w-text_w)/2:"
         "y=1450:"
+        "box=1:"
+        "boxcolor=black@0.4:"
+        "boxborderw=20:"
         "enable='between(t,8,10)'"
     ),
 
 
     "-t",
     "10",
-
 
     "-c:v",
     "libx264",
@@ -162,7 +158,6 @@ command = [
     "yuv420p",
 
     str(video)
-
 ]
 
 
@@ -172,8 +167,6 @@ subprocess.run(
 )
 
 
-print("")
 print("====================")
 print("VIDEO CREATED")
-print("====================")
 print(video)
